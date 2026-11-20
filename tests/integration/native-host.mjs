@@ -1,0 +1,31 @@
+import {spawn} from 'node:child_process';
+import {mkdtemp,mkdir,writeFile,readFile,chmod,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+const home=await mkdtemp(path.join(tmpdir(),'gs-native-test-'));
+const binary=path.resolve('release/native-linux-x86_64/ghoststate-companion');
+const allowed='chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/';
+const env={...process.env,HOME:home};
+try {
+  const config=path.join(home,'.config/ghoststate/allowed-callers.json');
+  await mkdir(path.dirname(config),{recursive:true});await writeFile(config,JSON.stringify({allowed:[allowed]}),{mode:0o600});
+  const run=(args,stdio=['ignore','pipe','pipe'])=>spawn(binary,args,{env,stdio});
+  const exit=child=>new Promise(r=>child.on('exit',r));
+  const bad=run(['chrome-extension://bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/']);assert.equal(await exit(bad),1);
+  await chmod(config,0o666);const weak=run([allowed]);assert.equal(await exit(weak),1);await chmod(config,0o600);
+  const oversized=run([allowed],['pipe','pipe','pipe']);const huge=Buffer.alloc(4);huge.writeUInt32LE(65537);oversized.stdin.end(huge);assert.equal(await exit(oversized),0);
+  const child=run([allowed],['pipe','pipe','pipe']);let buf=Buffer.alloc(0),queue=[];
+  child.stdout.on('data',data=>{buf=Buffer.concat([buf,data]);while(buf.length>=4&&buf.length>=4+buf.readUInt32LE(0)){const n=buf.readUInt32LE(0),msg=JSON.parse(buf.subarray(4,4+n));buf=buf.subarray(4+n);queue.shift()?.(msg);}});
+  const req=o=>new Promise((resolve,reject)=>{queue.push(resolve);const body=Buffer.from(JSON.stringify(o)),header=Buffer.alloc(4);header.writeUInt32LE(body.length);child.stdin.write(Buffer.concat([header,body]));setTimeout(()=>reject(new Error('native response timeout')),5000).unref();});
+  const status=await req({id:1,op:'status',payload:{}});assert.equal(status.ok,true);assert.equal(status.data.platform,'linux');assert.equal(status.data.listening,false);
+  assert.equal(status.data.version,JSON.parse(await readFile('package.json','utf8')).version,'packaged native binary version must match the project');
+  const badOp=await req({id:2,op:'execute_shell',payload:{command:'whoami'}});assert.equal(badOp.ok,false);assert.match(badOp.error,/Unknown native command/);
+  const badShape=await req({id:3,op:'status',payload:{extra:'not allowed'}});assert.equal(badShape.ok,false);
+  const badEnvelope=await req({id:5,op:'status',payload:{},extra:true});assert.equal(badEnvelope.ok,false);assert.equal(badEnvelope.id,0);
+  const noPeer=await req({id:4,op:'send_grant',payload:{origin:'https://example.org',username:'synthetic',password:'synthetic'}});assert.equal(noPeer.ok,false);assert.doesNotMatch(JSON.stringify(noPeer),/synthetic/);
+  const noPair=await req({id:6,op:'send_grant',payload:{peerId:'unknown-peer',origin:'https://example.org',username:'synthetic',password:'synthetic'}});assert.equal(noPair.ok,false);assert.match(noPair.error,/No verified recipient/);assert.doesNotMatch(JSON.stringify(noPair),/synthetic/);
+  assert.equal(status.data.connectionLimit,8);assert.equal(status.data.bleProtocol,2);assert.deepEqual(status.data.pairings,[]);
+  child.stdin.end();assert.equal(await exit(child),0);
+  console.log('PASS native framing limits, caller and filesystem allowlist checks, schema validation, and unpaired-transfer rejection');
+} finally {await rm(home,{recursive:true,force:true});}

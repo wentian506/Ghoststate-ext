@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>GhostState</title>
+  <link rel="icon" href="./assets/ghoststate-logo.png" type="image/png">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="brand">
+    <img class="mark" src="./assets/ghoststate-logo.png" width="38" height="38" alt="">
+    <div><strong>GhostState</strong><span>PRIVATE WORKSPACE</span></div>
+    <span class="brand-dot" aria-hidden="true"></span>
+  </header>
+  <main>
+    <div class="eyebrow">YOUR SIGN-IN ASSISTANT</div>
+    <h1>Sign in, on your terms.</h1>
+    <p>Choose a site to learn or fill an approved sign-in workflow. Credentials are stored locally; nearby sharing requires your approval.</p>
+    <div class="action-card">
+      <div class="card-label"><span class="number">01</span><div><strong>Choose this site</strong><small>Grant access only when you trust it.</small></div></div>
+      <button id="use-site" class="primary">Use this site <span aria-hidden="true">→</span></button>
+      <button id="open-dashboard" class="secondary">Open dashboard <span aria-hidden="true">↗</span></button>
+    </div>
+    <div id="popup-status" role="status" aria-live="polite"></div>
+  </main>
+  <footer><span class="foot-dot" aria-hidden="true"></span> Local by default <span>·</span> You submit forms yourself</footer>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

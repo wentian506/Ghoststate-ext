@@ -1,0 +1,2 @@
+# Optional Firefox WebDriver integration; not required by the product.
+selenium==4.53.0

@@ -1,0 +1,71 @@
+name: Build, test and security checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Install Linux libraries
+        run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev libudev-dev pkg-config gcc-mingw-w64-x86-64 xvfb xdotool zip unzip
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm audit
+      - run: python3 scripts/audit-rust-osv.py
+      - run: cargo fmt --manifest-path apps/desktop-companion/Cargo.toml --check
+      - run: cargo clippy --all-targets --locked --manifest-path apps/desktop-companion/Cargo.toml -- -D warnings
+      - run: cargo test --locked --manifest-path apps/desktop-companion/Cargo.toml
+      - run: cargo build --release --locked --manifest-path apps/desktop-companion/Cargo.toml
+      - run: rustup target add x86_64-pc-windows-gnu
+      - run: cargo build --release --locked --target x86_64-pc-windows-gnu --manifest-path apps/desktop-companion/Cargo.toml
+      - name: Stage freshly built experimental hosts
+        run: |
+          mkdir -p release/native-linux-x86_64 release/native-windows-x64
+          cp apps/desktop-companion/target/release/ghoststate-companion release/native-linux-x86_64/
+          cp apps/desktop-companion/target/x86_64-pc-windows-gnu/release/ghoststate-companion.exe release/native-windows-x64/
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Install test-only Firefox WebDriver and Python requirements
+        run: |
+          python -m pip install -r tests/e2e/requirements-firefox.txt Pillow==11.3.0
+          curl -fsSL https://github.com/mozilla/geckodriver/releases/download/v0.36.0/geckodriver-v0.36.0-linux64.tar.gz -o "$RUNNER_TEMP/geckodriver.tgz"
+          echo '0bde38707eb0a686a20c6bd50f4adcc7d60d4f73c60eb83ee9e0db8f65823e04  '"$RUNNER_TEMP/geckodriver.tgz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/ghoststate-bin"
+          tar -xzf "$RUNNER_TEMP/geckodriver.tgz" -C "$RUNNER_TEMP/ghoststate-bin"
+          echo "GECKODRIVER=$RUNNER_TEMP/ghoststate-bin/geckodriver" >> "$GITHUB_ENV"
+          echo "FIREFOX_BINARY=$(node -p "require('playwright').firefox.executablePath()")" >> "$GITHUB_ENV"
+      - run: npm run test:dashboard && npm run test:responsive && npm run test:responsive:firefox && npm run test:responsive:webkit && npm run test:a11y && npm run test:native && npm run test:installer && npm run test:browser && npm run test:native-ui && npm run test:autofill && npm run test:permission && npm run test:native-permission && npm run test:native-bridge
+      - run: npm run test:firefox && npm run test:firefox-consent
+      - run: npm run test:store-assets
+      - run: npm run package
+      - run: npm run test:release
+
+  windows-native:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --manifest-path apps/desktop-companion/Cargo.toml --check
+      - run: cargo clippy --all-targets --locked --manifest-path apps/desktop-companion/Cargo.toml -- -D warnings
+      - run: cargo test --locked --manifest-path apps/desktop-companion/Cargo.toml
+      - run: cargo build --release --locked --manifest-path apps/desktop-companion/Cargo.toml
+      - run: pwsh -NoProfile -File tests/integration/windows-installer-mocked.ps1
+      - run: node tests/integration/windows-real.mjs

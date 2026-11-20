@@ -1,0 +1,35 @@
+import {mkdtemp,readFile,rm,stat,writeFile} from 'node:fs/promises';
+import {spawnSync} from 'node:child_process';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+const home=await mkdtemp(path.join(tmpdir(),'gs-installer-'));
+const id='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', storeId='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+const binary=path.resolve('release/native-linux-x86_64/ghoststate-companion');
+const install=(browser,caller,source=binary)=>spawnSync('bash',['scripts/install-native.sh',browser,caller,source],{env:{...process.env,HOME:home},encoding:'utf8'});
+try {
+  const out=install('chrome',id);assert.equal(out.status,0,out.stderr);
+  const host=JSON.parse(await readFile(path.join(home,'.config/google-chrome/NativeMessagingHosts/com.ghoststate.bridge.json')));
+  let allow=JSON.parse(await readFile(path.join(home,'.config/ghoststate/allowed-callers.json')));
+  assert.deepEqual(host.allowed_origins,[`chrome-extension://${id}/`]);assert.deepEqual(allow.allowed,host.allowed_origins);
+  const again=install('chrome',storeId);assert.equal(again.status,0,again.stderr);
+  const updated=JSON.parse(await readFile(path.join(home,'.config/google-chrome/NativeMessagingHosts/com.ghoststate.bridge.json')));
+  assert.deepEqual(updated.allowed_origins,[`chrome-extension://${id}/`,`chrome-extension://${storeId}/`]);
+  const ff=install('firefox','ghoststate@local.invalid');assert.equal(ff.status,0,ff.stderr);
+  const ffhost=JSON.parse(await readFile(path.join(home,'.mozilla/native-messaging-hosts/com.ghoststate.bridge.json')));
+  assert.deepEqual(ffhost.allowed_extensions,['ghoststate@local.invalid']);
+  allow=JSON.parse(await readFile(path.join(home,'.config/ghoststate/allowed-callers.json')));
+  assert.deepEqual(allow.allowed,[...updated.allowed_origins,'ghoststate@local.invalid']);
+  assert.notEqual(install('chrome','invalid-id').status,0);
+  const destination=path.join(home,'.local/bin/ghoststate-companion');
+  assert.equal(install('chrome',storeId,destination).status,0,'reinstalling the already installed binary must work');
+  assert.equal((await stat(destination)).mode&0o777,0o755);
+  const configPath=path.join(home,'.config/ghoststate/allowed-callers.json');
+  assert.equal((await stat(configPath)).mode&0o777,0o600);
+  const before=await readFile(destination),malformedBinary=path.join(home,'different-binary');
+  await writeFile(malformedBinary,'unexpected replacement');
+  await writeFile(configPath,JSON.stringify({allowed:['chrome-extension://*/*']}));
+  assert.notEqual(install('chrome',id,malformedBinary).status,0,'malformed callers must be rejected');
+  assert.deepEqual(await readFile(destination),before,'invalid config must not replace the installed executable');
+  console.log('PASS Linux registration: exact multiple IDs, browser isolation, self-copy, file modes, and fail-before-modify malformed-input handling');
+} finally {await rm(home,{recursive:true,force:true});}

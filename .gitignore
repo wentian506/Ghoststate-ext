@@ -1,0 +1,7 @@
+node_modules/
+.cache/
+target/
+*.log
+.DS_Store
+.env
+release/*.zip

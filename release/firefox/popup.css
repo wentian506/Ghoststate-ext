@@ -1,0 +1,61 @@
+@font-face {
+  font-family: Inter;
+  src: url('./assets/inter-latin.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+:root {
+  color-scheme: light;
+  --bg: #faf3f1;
+  --surface: #fff;
+  --text: #151318;
+  --muted: #625c64;
+  --border: #28242a;
+  --line: #d8cecc;
+  --link: #61359f;
+  --accent: #b184f5;
+  --accent-soft: #eee3fd;
+  --danger: #a0303c;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #17151c;
+  --surface: #24212a;
+  --text: #f6f2f8;
+  --muted: #c7c0c9;
+  --border: #aaa1ae;
+  --line: #514a55;
+  --link: #ddc8ff;
+  --accent: #c6a3fa;
+  --accent-soft: #433052;
+  --danger: #ffabb2;
+}
+* { box-sizing: border-box; }
+body { width: 344px; max-width: 100%; margin: 0; background: var(--bg); color: var(--text); font: 12px/1.55 Inter, system-ui, sans-serif; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 17px 19px; background: #08080a; color: #f9f7fa; }
+.mark { display: block; width: 38px; height: 38px; object-fit: contain; background: #fff; }
+.brand strong { display: block; font-size: 16px; line-height: 1.1; letter-spacing: -.04em; }
+.brand div span { display: block; color: #aaa2ae; font-size: 8px; letter-spacing: .13em; font-weight: 700; margin-top: 5px; }
+.brand-dot { width: 7px; height: 7px; border-radius: 50%; background: #a97bf2; margin-left: auto; }
+main { padding: 23px 20px 15px; }
+.eyebrow { color: var(--link); font-size: 9px; font-weight: 800; letter-spacing: .12em; }
+h1 { font-size: 23px; line-height: 1.15; letter-spacing: -.045em; margin: 10px 0; }
+p { color: var(--muted); margin: 0 0 19px; line-height: 1.65; }
+.action-card { background: var(--surface); border: 1px solid var(--border); padding: 14px; }
+.card-label { display: flex; align-items: center; gap: 10px; padding-bottom: 13px; }
+.number { display: grid; place-items: center; width: 29px; height: 29px; border: 1px solid var(--border); background: var(--accent-soft); font-size: 10px; font-weight: 800; }
+.card-label strong, .card-label small { display: block; }
+.card-label strong { font-size: 11px; }
+.card-label small { color: var(--muted); font-size: 10px; margin-top: 3px; }
+button { width: 100%; border: 1px solid var(--border); border-radius: 2px; padding: 10px 11px; font: inherit; font-weight: 800; text-align: left; cursor: pointer; }
+button:focus-visible { outline: 3px solid #9562e2; outline-offset: 3px; }
+button:disabled { cursor: not-allowed; opacity: .5; }
+button span { float: right; }
+.primary { background: var(--accent); color: #17101f; }
+.secondary { background: var(--surface); color: var(--text); margin-top: 7px; }
+button:not(:disabled):hover { filter: brightness(.96); }
+#popup-status { color: var(--danger); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+#popup-status:not(:empty) { margin-top: 11px; }
+footer { display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--line); margin: 0 20px; padding: 13px 0 16px; color: var(--muted); font-size: 10px; font-weight: 600; }
+.foot-dot { width: 7px; height: 7px; background: #6fbd90; border-radius: 50%; }

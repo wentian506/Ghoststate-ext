@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "GhostState — local authentication assistant",
+  "version": "0.2.2",
+  "description": "Encrypted local credentials and user-controlled multi-step sign-ins.",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "optional_permissions": ["nativeMessaging"],
+  "optional_host_permissions": ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
+  "action": {"default_popup":"popup.html", "default_title":"GhostState", "default_icon":{"16":"icon16.png","48":"icon48.png","128":"icon128.png"}},
+  "content_security_policy": {"extension_pages":"script-src 'self'; object-src 'self'"},
+  "icons": {"16":"icon16.png","48":"icon48.png","128":"icon128.png"}
+}
